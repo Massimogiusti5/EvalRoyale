@@ -15,7 +15,7 @@ import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-PLAYER_TAG_RE = re.compile(r"^#?[A-Z0-9]{3,15}$")
+PLAYER_TAG_RE = re.compile(r"^#[A-Z0-9]+$")
 
 # URL and key to get game data
 API_BASE = "https://api.clashroyale.com/v1"
