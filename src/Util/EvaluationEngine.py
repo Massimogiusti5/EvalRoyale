@@ -2,73 +2,8 @@ import re
 import numpy as np
 import pandas as pd
 from difflib import get_close_matches
+import ModelDevelopment
 
-# ----------------------------------------------------
-# 0) Your training-time metadata function (verbatim)
-# ----------------------------------------------------
-def compute_deck_metadata(deck_ids, cards_df):
-    """
-    Compute deck metadata (avg/total elixir + troop/spell/building counts)
-    using cards_df with columns: ['id', 'name', 'elixirCost', ...].
-
-    Assumptions:
-      - 260xxxxx = troop/champion
-      - 270xxxxx = building
-      - 280xxxxx = spell
-      - 159xxxxx = tower troop (ignored in counts by default)
-    """
-    deck_ids = list(map(int, deck_ids))
-
-    # Fast lookup: id -> elixirCost
-    id_to_elixir = dict(zip(cards_df["id"].astype(int), cards_df["elixirCost"]))
-
-    troop_count = 0
-    spell_count = 0
-    building_count = 0
-    unknown_ids = []
-    tower_ids = []
-
-    elixirs = []
-
-    for cid in deck_ids:
-        # Type inference from ID bands
-        if 26000000 <= cid < 27000000:
-            troop_count += 1
-        elif 27000000 <= cid < 28000000:
-            building_count += 1
-        elif 28000000 <= cid < 29000000:
-            spell_count += 1
-        elif 159000000 <= cid < 160000000:
-            tower_ids.append(cid)  # tower troop (ignored in counts)
-        else:
-            unknown_ids.append(cid)
-
-        # Elixir
-        if cid in id_to_elixir:
-            cost = id_to_elixir[cid]
-            if cost is not None and not (isinstance(cost, float) and np.isnan(cost)):
-                elixirs.append(float(cost))
-        else:
-            unknown_ids.append(cid)
-
-    total_elixir = float(np.sum(elixirs)) if elixirs else np.nan
-    avg_elixir = float(np.mean(elixirs)) if elixirs else np.nan
-
-    return {
-        "avg_elixir": avg_elixir,
-        "total_elixir": total_elixir,
-        "troop_count": troop_count,
-        "spell_count": spell_count,
-        "building_count": building_count,
-        "missing_card_ids": sorted(set(unknown_ids)),
-        "tower_card_ids": tower_ids,
-        "elixir_cards_counted": len(elixirs),
-    }
-
-
-# ----------------------------
-# 1) Name -> id resolution
-# ----------------------------
 def _norm_name(s: str) -> str:
     s = str(s).strip().lower()
     s = re.sub(r"['’]", "", s)
@@ -124,9 +59,6 @@ def resolve_ids(deck_names, name_to_id: dict, *, deck_label="deck"):
     return ids
 
 
-# ----------------------------------------------------
-# 2) Build inference row matching X columns
-# ----------------------------------------------------
 def build_matchup_row(
     deckA_names,
     deckB_names,
@@ -180,9 +112,9 @@ def build_matchup_row(
         elif strict_missing_cols:
             raise KeyError(f"Feature column '{col}' missing from feature_columns")
 
-    # metadata (your exact logic)
-    p_meta = compute_deck_metadata(p_ids, cards_df)
-    o_meta = compute_deck_metadata(o_ids, cards_df)
+    # metadata
+    p_meta = ModelDevelopment.compute_deck_metadata(p_ids, cards_df)
+    o_meta = ModelDevelopment.compute_deck_metadata(o_ids, cards_df)
 
     def _nan_to_0(v):
         return 0.0 if (v is None or (isinstance(v, float) and np.isnan(v))) else float(v)
@@ -213,10 +145,6 @@ def build_matchup_row(
 
     return x
 
-
-# ----------------------------------------------------
-# 3) Predict
-# ----------------------------------------------------
 def predict_matchup_win_pct(
     model,
     deckA_names,
@@ -242,3 +170,47 @@ def predict_matchup_win_pct(
     )
     prob = float(model.predict_proba(X_row)[0, 1])
     return prob * 100.0, X_row
+
+def evaluate_matchup(
+    model,
+    deckA,
+    deckB,
+    *,
+    cards_df,
+    feature_columns,
+    gameModeId=72000006,
+    hour=12,
+    day_of_week=2
+):
+
+    # A vs B
+    p_ab, _ = predict_matchup_win_pct(
+        model,
+        deckA,
+        deckB,
+        cards_df=cards_df,
+        feature_columns=feature_columns,
+        gameModeId=gameModeId,
+        hour=hour,
+        day_of_week=day_of_week
+    )
+
+    # B vs A
+    p_ba, _ = predict_matchup_win_pct(
+        model,
+        deckB,
+        deckA,
+        cards_df=cards_df,
+        feature_columns=feature_columns,
+        gameModeId=gameModeId,
+        hour=hour,
+        day_of_week=day_of_week
+    )
+
+    advantage = p_ab - p_ba
+
+    return {
+        "A_beats_B": p_ab,
+        "B_beats_A": p_ba,
+        "advantage": advantage
+    }

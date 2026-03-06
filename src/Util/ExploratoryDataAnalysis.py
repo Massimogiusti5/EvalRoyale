@@ -19,7 +19,6 @@ PLAYER_TAG_RE = re.compile(r"^#[A-Z0-9]+$")
 
 # URL and key to get game data
 API_BASE = "https://api.clashroyale.com/v1"
-API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjFjODhiNjk4LWUwY2ItNGJjNy04ZDk5LWFiNDU0ZWVkNDE5NCIsImlhdCI6MTc3MDg0Mjc2Mywic3ViIjoiZGV2ZWxvcGVyL2VlMjY0OTJmLTBiNDMtMmQyZC1iMDA5LWU0OGFhNDY0Yjk3MiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyI1MC4zNC43OC4xMDkiXSwidHlwZSI6ImNsaWVudCJ9XX0.ZdZ4ysmxSP5vg-j6_hFM81zSDTHZn6VsJRnbrSjxSPh8tg5V77vmh4xsaC2jZ42xZ_vXfcoNwaEHjDF6uLxQBg"
 
 # Only get games from allowed game modes, ladder and ranked
 ALLOWED_GAMEMODE_IDS = {72000006, 72000450, 54000137}
@@ -445,9 +444,7 @@ def plot_card_usage_and_win_rates(
 
     card_stats = card_stats.sort_values("usage_rate", ascending=False).reset_index(drop=True)
 
-    # --------------------------
     # Top Usage Plot
-    # --------------------------
     top_usage = card_stats.head(top_n_usage).sort_values("usage_rate")
 
     plt.figure()
@@ -457,9 +454,7 @@ def plot_card_usage_and_win_rates(
     plt.tight_layout()
     plt.show()
 
-    # --------------------------
     # Top Win Rate Plot
-    # --------------------------
     eligible = card_stats[card_stats["usage_count"] >= min_uses_for_winrate]
     top_win = (
         eligible
@@ -475,9 +470,7 @@ def plot_card_usage_and_win_rates(
     plt.tight_layout()
     plt.show()
 
-    # --------------------------
     # Scatter Plot
-    # --------------------------
     plt.figure()
     plt.scatter(eligible["usage_rate"], eligible["win_rate"])
     plt.xlabel("Usage Rate")
